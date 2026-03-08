@@ -3,6 +3,12 @@
 # ----------------------------------------------------------------
 # AUTO-DETECT SETTINGS
 # ----------------------------------------------------------------
+GITHUB_USER="sdgamer8263-sketch"
+REPO_NAME="ptheme"
+BRANCH="main"
+THEME_ZIP_NAME="pterodactyl.zip"
+TARGET_DIR="/var/www/pterodactyl" 
+
 # Colors
 BLUE='\033[0;34m'
 GREEN='\033[0;32m'
