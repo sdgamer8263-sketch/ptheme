@@ -34,11 +34,9 @@ sleep 2
 # ----------------------------------------------------------------
 echo -e "${BLUE}[INFO] Searching for Pterodactyl installation...${NC}"
 
-# Check standard location first
 if [ -d "/var/www/pterodactyl" ]; then
     cd "/var/www/pterodactyl"
     echo -e "${GREEN}[OK] Detected Pterodactyl at: /var/www/pterodactyl${NC}"
-# Check current directory
 elif [ -f "./artisan" ]; then
     echo -e "${GREEN}[OK] Detected Pterodactyl in current directory.${NC}"
 else
@@ -48,13 +46,30 @@ else
 fi
 
 # ----------------------------------------------------------------
-# 2. DOWNLOAD & EXTRACT
+# 2. CHECK & INSTALL YARN (NEW STEP)
+# ----------------------------------------------------------------
+if ! command -v yarn &> /dev/null; then
+    echo -e "${BLUE}[INFO] Yarn command not found. Installing Yarn...${NC}"
+    npm install -g yarn
+    
+    if ! command -v yarn &> /dev/null; then
+        echo -e "${RED}[ERROR] Failed to install Yarn automatically.${NC}"
+        echo -e "${RED}Please run: apt install -y yarn OR npm install -g yarn manually.${NC}"
+        exit 1
+    else
+        echo -e "${GREEN}[OK] Yarn installed successfully.${NC}"
+    fi
+else
+    echo -e "${GREEN}[OK] Yarn is already installed.${NC}"
+fi
+
+# ----------------------------------------------------------------
+# 3. DOWNLOAD & EXTRACT
 # ----------------------------------------------------------------
 echo -e "${BLUE}[INFO] Enabling Maintenance Mode...${NC}"
 php artisan down
 
 echo -e "${BLUE}[INFO] Downloading theme files...${NC}"
-# Clean old files
 rm -rf temp_repo.zip
 rm -rf "${REPO_NAME}-${BRANCH}"
 
@@ -69,27 +84,21 @@ fi
 echo -e "${BLUE}[INFO] Extracting repository...${NC}"
 unzip -q -o temp_repo.zip
 
-# Construct extracted folder name
 EXTRACTED_FOLDER="${REPO_NAME}-${BRANCH}"
 
 if [ -f "$EXTRACTED_FOLDER/$THEME_ZIP_NAME" ]; then
     echo -e "${GREEN}[OK] Found theme ZIP. Installing...${NC}"
     
-    # Move the specific zip out
     mv "$EXTRACTED_FOLDER/$THEME_ZIP_NAME" .
-    
-    # Clean up repo folder immediately
     rm -rf "$EXTRACTED_FOLDER"
     rm temp_repo.zip
     
-    # Unzip the actual theme
     unzip -o -q "$THEME_ZIP_NAME"
     rm "$THEME_ZIP_NAME"
     
     echo -e "${GREEN}[OK] Theme files applied.${NC}"
 else
     echo -e "${RED}[ERROR] '$THEME_ZIP_NAME' not found in repository!${NC}"
-    # Cleanup
     rm -rf "$EXTRACTED_FOLDER"
     rm temp_repo.zip
     php artisan up
@@ -97,7 +106,7 @@ else
 fi
 
 # ----------------------------------------------------------------
-# 3. INSTALLATION COMMANDS
+# 4. INSTALLATION COMMANDS
 # ----------------------------------------------------------------
 echo -e "${BLUE}[INFO] Installing dependencies (react-feather)...${NC}"
 yarn add react-feather
@@ -112,7 +121,7 @@ echo -e "${BLUE}[INFO] Building assets (This may take a few minutes)...${NC}"
 yarn build:production
 
 # ----------------------------------------------------------------
-# 4. FINALIZE
+# 5. FINALIZE
 # ----------------------------------------------------------------
 echo -e "${BLUE}[INFO] Fixing permissions...${NC}"
 chown -R www-data:www-data *
