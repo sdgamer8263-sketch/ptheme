@@ -1,92 +1,112 @@
 #!/bin/bash
 
-# --- Colors for formatting ---
-RED='\033[0;31m'
+
+
+# Colors
+BLUE='\033[0;34m'
 GREEN='\033[0;32m'
-CYAN='\033[0;36m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+RED='\033[0;31m'
+NC='\033[0m'
 
-# --- Function: SDGAMER Banner ---
-show_banner() {
-    clear
-    echo -e "${CYAN}"
-    echo "  ____  _____   ____    _    __  __ _____ ____  "
-    echo " / ___||  _  \ / ___|  / \  |  \/  | ____|  _ \ "
-    echo " \___ \| | | || |  _  / _ \ | |\/| |  _| | |_) |"
-    echo "  ___) | |_| || |_| |/ ___ \| |  | | |___|  _ < "
-    echo " |____/|_____/ \____/_/   \_\_|  |_|_____|_| \_\\"
-    echo -e "${NC}"
-    echo -e "${YELLOW}       Welcome to SDGAMER Panel Manager${NC}"
-    echo "=================================================="
-}
-
-
+# ----------------------------------------------------------------
+# BANNER DISPLAY
+# ----------------------------------------------------------------
+clear
+echo -e "${BLUE}"
+echo "  _________  ________  ________  ________  _____ ______   _______   ________     "
+echo " |\   ____ \|\   ___ \|\   ____\|\   __  \|\   _ \  _   \|\  ___ \ |\   __  \    "
+echo " \ \  \___|_\ \  \_|\ \ \  \___|\ \  \|\  \ \  \\\__\ \  \ \   __/|\ \  \|\  \   "
+echo "  \ \_____  \\ \  \ \\ \ \  \  __\ \   __  \ \  \\|__| \  \ \  \_|/_\ \   _  _\  "
+echo "   \|____|\  \\ \  \_\\ \ \  \|\  \ \  \ \  \ \  \    \ \  \ \  \_|\ \ \  \\  \| "
+echo "     ____\_\  \\ \_______\ \_______\ \__\ \__\ \__\    \ \__\ \_______\ \__\\ _\ "
+echo "    |\_________\|_______|\|_______|\|__|\|__|\|__|     \|__|\|_______|\|__|\|__|"
+echo "    \|_________|                                                                "
+echo -e "${NC}"
+echo -e "${GREEN}    >>> Pterodactyl Theme Installer by SDGAMER <<< ${NC}"
 echo "----------------------------------------------------------------"
-echo "Starting Installation 
-echo "----------------------------------------------------------------"
+sleep 2
 
-# 1. Pterodactyl folder e dhuka
-cd $PTERO_DIR || { echo "Pterodactyl directory pawa jayni!"; exit 1; }
-
-# 2. Maintenance mode on kora
-echo "[+] Turning on maintenance mode..."
-php artisan down
-
-# 3. GitHub theke Zip download kora (SFTP er bodole)
-echo "[+] Downloading files directly from GitHub..."
-wget "https://github.com/$GITHUB_USER/$REPO_NAME/archive/refs/heads/$BRANCH.zip" -O theme.zip
-
-if [ -f "theme.zip" ]; then
-    echo "[+] Download successful."
+# 1. Check Directory
+echo -e "${BLUE}[INFO] Checking directory...${NC}"
+if [ -d "$PTERO_DIR" ]; then
+    cd "$PTERO_DIR"
+    echo -e "${GREEN}[OK] Navigated to $PTERO_DIR${NC}"
 else
-    echo "[-] Download failed. GitHub link ba repo name check koro."
+    echo -e "${RED}[ERROR] Pterodactyl directory not found!${NC}"
     exit 1
 fi
 
-# 4. Unzip kora ebong file replace kora
-echo "[+] Unzipping files..."
-unzip -o theme.zip
+# 2. Maintenance Mode
+echo -e "${BLUE}[INFO] Turning on maintenance mode...${NC}"
+php artisan down
 
-# GitHub zip extract hole ekta folder create hoy (ex: ptheme-main)
-# Oikhankar file gulo main directory te anchi
-EXTRACTED_DIR="${REPO_NAME}-${BRANCH}"
+# 3. Download GitHub Repo
+echo -e "${BLUE}[INFO] Downloading repository from GitHub...${NC}"
+wget -q "https://github.com/$GITHUB_USER/$REPO_NAME/archive/refs/heads/$BRANCH.zip" -O repo_download.zip
 
-if [ -d "$EXTRACTED_DIR" ]; then
-    echo "[+] Moving files to Pterodactyl root..."
-    cp -rf $EXTRACTED_DIR/* .
-    rm -rf $EXTRACTED_DIR
-    echo "[+] Files replaced successfully."
+if [ -f "repo_download.zip" ]; then
+    echo -e "${GREEN}[OK] Repo downloaded.${NC}"
 else
-    echo "[-] Extracted folder pawa jayni, check directory structure."
+    echo -e "${RED}[ERROR] Download failed. Check GitHub connection.${NC}"
+    exit 1
 fi
 
-# Zip file delete kora
-rm theme.zip
+# 4. Extract Repo to find specific ZIP
+echo -e "${BLUE}[INFO] Searching for $THEME_ZIP_NAME...${NC}"
+unzip -q -o repo_download.zip
 
-# 5. Tomar dewa command gulo run kora
-echo "[+] Installing dependencies (react-feather)..."
+# GitHub folder structure usually is 'RepoName-Branch'
+EXTRACTED_FOLDER="${REPO_NAME}-${BRANCH}"
+
+if [ -f "$EXTRACTED_FOLDER/$THEME_ZIP_NAME" ]; then
+    echo -e "${GREEN}[OK] Found $THEME_ZIP_NAME inside repo.${NC}"
+
+    # Move the theme zip to main directory
+    mv "$EXTRACTED_FOLDER/$THEME_ZIP_NAME" .
+
+    # Clean up repo junk immediately
+    rm -rf "$EXTRACTED_FOLDER"
+    rm repo_download.zip
+
+    # 5. UNZIP THEME FILES (The Main Step)
+    echo -e "${BLUE}[INFO] Extracting theme files from $THEME_ZIP_NAME...${NC}"
+    unzip -o -q "$THEME_ZIP_NAME"
+    
+    # Delete the zip after extraction
+    rm "$THEME_ZIP_NAME"
+    echo -e "${GREEN}[OK] Theme files installed.${NC}"
+else
+    echo -e "${RED}[ERROR] $THEME_ZIP_NAME not found in the repository!${NC}"
+    echo -e "${RED}Please make sure you uploaded 'pterodactyl.zip' to your GitHub main branch.${NC}"
+    rm -rf "$EXTRACTED_FOLDER"
+    rm repo_download.zip
+    php artisan up
+    exit 1
+fi
+
+# 6. Install Dependencies & Build
+echo -e "${BLUE}[INFO] Installing react-feather...${NC}"
 yarn add react-feather
 
-echo "[+] Database migration..."
-# '--force' dewa hoyeche jate '> yes' automatic hoye jay
+echo -e "${BLUE}[INFO] Database migration...${NC}"
 php artisan migrate --force
 
-echo "[+] Building production assets (Wait a minute)..."
-yarn build:production
-
-echo "[+] Clearing view cache..."
+echo -e "${BLUE}[INFO] Clearing views...${NC}"
 php artisan view:clear
 
-# 6. Permission thik kora
-echo "[+] Fixing permissions..."
+echo -e "${BLUE}[INFO] Building production assets (This takes time)...${NC}"
+yarn build:production
+
+# 7. Set Permissions
+echo -e "${BLUE}[INFO] Fixing permissions...${NC}"
 chown -R www-data:www-data $PTERO_DIR/*
 
-# 7. Maintenance mode off kora
-echo "[+] Turning off maintenance mode..."
+# 8. Maintenance Mode Off
+echo -e "${BLUE}[INFO] Turning off maintenance mode...${NC}"
 php artisan up
 
+echo -e "${GREEN}"
 echo "----------------------------------------------------------------"
-echo "Installation Complete!Now you can change Theme From Admin Panel."
+echo " INSTALLATION COMPLETE! "
 echo "----------------------------------------------------------------"
-
+echo -e "${NC}"
