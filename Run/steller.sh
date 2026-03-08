@@ -1,13 +1,12 @@
 #!/bin/bash
 
 # ----------------------------------------------------------------
-# AUTO-DETECT SETTINGS
+# CONFIGURATION
 # ----------------------------------------------------------------
 GITHUB_USER="sdgamer8263-sketch"
 REPO_NAME="ptheme"
 BRANCH="main"
 THEME_ZIP_NAME="pterodactyl.zip"
-TARGET_DIR="/var/www/pterodactyl" 
 
 # Colors
 BLUE='\033[0;34m'
@@ -16,91 +15,90 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 # ----------------------------------------------------------------
-# BANNER
+# BANNER: ONLY SDGAMER
 # ----------------------------------------------------------------
 clear
 echo -e "${BLUE}"
-echo "  _________  ________  ________  ________  _____ ______   _______   ________     "
-echo " |\   ____ \|\   ___ \|\   ____\|\   __  \|\   _ \  _   \|\  ___ \ |\   __  \    "
-echo " \ \  \___|_\ \  \_|\ \ \  \___|\ \  \|\  \ \  \\\__\ \  \ \   __/|\ \  \|\  \   "
-echo "  \ \_____  \\ \  \ \\ \ \  \  __\ \   __  \ \  \\|__| \  \ \  \_|/_\ \   _  _\  "
-echo "   \|____|\  \\ \  \_\\ \ \  \|\  \ \  \ \  \    \ \  \ \  \_|\ \ \  \\  \| "
-echo "     ____\_\  \\ \_______\ \_______\ \__\ \__\ \__\    \ \__\ \_______\ \__\\ _\ "
-echo "    |\_________\|_______|\|_______|\|__|\|__|\|__|     \|__|\|_______|\|__|\|__|"
-echo "    \|_________|                                                                "
+echo "   _____ ____  _____          __  __ ______ _____  "
+echo "  / ____|  _ \|  __ \   /\   |  \/  |  ____|  __ \ "
+echo " | (___ | | | | |  \/  /  \  | \  / | |__  | |__) |"
+echo "  \___ \| | | | | __  / /\ \ | |\/| |  __| |  _  / "
+echo "  ____) | |_| | |_\ \/ ____ \| |  | | |____| | \ \ "
+echo " |_____/|____/ \____/_/    \_\_|  |_|______|_|  \_\\"
 echo -e "${NC}"
-echo -e "${GREEN}    >>> Fully Automatic Theme Installer by SDGAMER <<< ${NC}"
 echo "----------------------------------------------------------------"
 sleep 2
 
+# ----------------------------------------------------------------
 # 1. AUTO-DETECT DIRECTORY
-echo -e "${BLUE}[INFO] Detecting Pterodactyl installation...${NC}"
+# ----------------------------------------------------------------
+echo -e "${BLUE}[INFO] Searching for Pterodactyl installation...${NC}"
 
-if [ -d "$TARGET_DIR" ]; then
-    cd "$TARGET_DIR"
-    echo -e "${GREEN}[OK] Found Pterodactyl at: $TARGET_DIR${NC}"
+# Check standard location first
+if [ -d "/var/www/pterodactyl" ]; then
+    cd "/var/www/pterodactyl"
+    echo -e "${GREEN}[OK] Detected Pterodactyl at: /var/www/pterodactyl${NC}"
+# Check current directory
+elif [ -f "./artisan" ]; then
+    echo -e "${GREEN}[OK] Detected Pterodactyl in current directory.${NC}"
 else
-    echo -e "${RED}[ERROR] Pterodactyl folder (/var/www/pterodactyl) not found!${NC}"
-    echo -e "${RED}Installation cannot proceed automatically.${NC}"
+    echo -e "${RED}[ERROR] Could not find Pterodactyl directory!${NC}"
+    echo -e "${RED}Please run this script inside your Pterodactyl folder.${NC}"
     exit 1
 fi
 
-# 2. INSTALL UNZIP (Just in case)
-if ! command -v unzip &> /dev/null; then
-    echo -e "${BLUE}[INFO] Installing 'unzip'...${NC}"
-    apt-get update && apt-get install -y unzip
-fi
-
-# 3. MAINTENANCE MODE
+# ----------------------------------------------------------------
+# 2. DOWNLOAD & EXTRACT
+# ----------------------------------------------------------------
 echo -e "${BLUE}[INFO] Enabling Maintenance Mode...${NC}"
 php artisan down
 
-# 4. DOWNLOAD REPO
-echo -e "${BLUE}[INFO] Downloading resources from GitHub...${NC}"
-# Delete old temp files if exist
-rm -rf temp_repo.zip ptheme-main
+echo -e "${BLUE}[INFO] Downloading theme files...${NC}"
+# Clean old files
+rm -rf temp_repo.zip
+rm -rf "${REPO_NAME}-${BRANCH}"
 
 wget -q "https://github.com/$GITHUB_USER/$REPO_NAME/archive/refs/heads/$BRANCH.zip" -O temp_repo.zip
 
-if [ -f "temp_repo.zip" ]; then
-    echo -e "${GREEN}[OK] Download complete.${NC}"
-else
-    echo -e "${RED}[ERROR] Could not download from GitHub.${NC}"
+if [ ! -f "temp_repo.zip" ]; then
+    echo -e "${RED}[ERROR] Download failed. Check internet connection.${NC}"
     php artisan up
     exit 1
 fi
 
-# 5. FIND AND EXTRACT 'pterodactyl.zip'
-echo -e "${BLUE}[INFO] Extracting repository to find theme file...${NC}"
+echo -e "${BLUE}[INFO] Extracting repository...${NC}"
 unzip -q -o temp_repo.zip
 
-# GitHub extracts to folder 'RepoName-Branch' (e.g., ptheme-main)
+# Construct extracted folder name
 EXTRACTED_FOLDER="${REPO_NAME}-${BRANCH}"
 
 if [ -f "$EXTRACTED_FOLDER/$THEME_ZIP_NAME" ]; then
-    echo -e "${GREEN}[OK] Found '$THEME_ZIP_NAME'. Installing...${NC}"
+    echo -e "${GREEN}[OK] Found theme ZIP. Installing...${NC}"
     
-    # Move specific zip to current dir
+    # Move the specific zip out
     mv "$EXTRACTED_FOLDER/$THEME_ZIP_NAME" .
     
-    # Unzip the theme over the panel
-    unzip -o -q "$THEME_ZIP_NAME"
-    
-    # Clean up junk
-    rm "$THEME_ZIP_NAME"
+    # Clean up repo folder immediately
     rm -rf "$EXTRACTED_FOLDER"
     rm temp_repo.zip
     
+    # Unzip the actual theme
+    unzip -o -q "$THEME_ZIP_NAME"
+    rm "$THEME_ZIP_NAME"
+    
     echo -e "${GREEN}[OK] Theme files applied.${NC}"
 else
-    echo -e "${RED}[ERROR] '$THEME_ZIP_NAME' not found inside the repo!${NC}"
+    echo -e "${RED}[ERROR] '$THEME_ZIP_NAME' not found in repository!${NC}"
+    # Cleanup
     rm -rf "$EXTRACTED_FOLDER"
     rm temp_repo.zip
     php artisan up
     exit 1
 fi
 
-# 6. RUN COMMANDS
+# ----------------------------------------------------------------
+# 3. INSTALLATION COMMANDS
+# ----------------------------------------------------------------
 echo -e "${BLUE}[INFO] Installing dependencies (react-feather)...${NC}"
 yarn add react-feather
 
@@ -110,19 +108,20 @@ php artisan migrate --force
 echo -e "${BLUE}[INFO] Clearing views...${NC}"
 php artisan view:clear
 
-echo -e "${BLUE}[INFO] Building production assets (Wait koro, somoy lagbe)...${NC}"
+echo -e "${BLUE}[INFO] Building assets (This may take a few minutes)...${NC}"
 yarn build:production
 
-# 7. FIX PERMISSIONS
+# ----------------------------------------------------------------
+# 4. FINALIZE
+# ----------------------------------------------------------------
 echo -e "${BLUE}[INFO] Fixing permissions...${NC}"
 chown -R www-data:www-data *
 
-# 8. EXIT MAINTENANCE MODE
 echo -e "${BLUE}[INFO] Disabling Maintenance Mode...${NC}"
 php artisan up
 
 echo -e "${GREEN}"
 echo "----------------------------------------------------------------"
-echo " INSTALLATION SUCCESSFUL! "
+echo " INSTALLATION COMPLETE! "
 echo "----------------------------------------------------------------"
 echo -e "${NC}"
